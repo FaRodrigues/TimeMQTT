@@ -110,10 +110,30 @@ def getSubDividedDayTime(nowqdtime, localbasetime, instep):
             print("Não foi possível gerar a lista de horários")
     return sddt
 
+def decodificador(decimal):
+    dicionario = {
+        1: "External reference error",
+        2: "Internal oscillator error",
+        4: "PLL Lock error",
+        8: "Tuning voltage error",
+        16: "Invalid parameter",
+        32: "Invalid command",
+        64: "DC Backup Loss",
+        128: "AC Power Loss"
+    }
+    codigos = []
+    for chave, valor in sorted(dicionario.items(), reverse=True):
+        # print(chave, valor)
+        if decimal >= chave:
+            codigos.append(chave)
+            decimal -= chave
+    return codigos
+
 
 class UserInterfaceHROG(QMainWindow):
     def __init__(self):
         super(UserInterfaceHROG, self).__init__()
+        tokenHROGready = False
         self.nextScheduledDatetime = None
         self.datetimeToDoTask = None
         self.qdtnow = getDateTimeFromNow()
@@ -158,6 +178,7 @@ class UserInterfaceHROG(QMainWindow):
         hrog_port = resp[0]
         if "COM" in hrog_port and len(hrog_port) > 0:
             initializeComport(hrog_port)
+            tokenHROGready = True
         else:
             print("==> ERR: {}".format(status_message))
 
@@ -172,7 +193,7 @@ class UserInterfaceHROG(QMainWindow):
         self.statusbar.setFont(QtGui.QFont('Arial', 10, QFont.Weight.DemiBold))
         self.statusbar.setSizeGripEnabled(False)
 
-        self.setWindowTitle("HROG-10 Interactive Interface Sample")
+        self.setWindowTitle("HROG-10 Interactive Interface With MQTT Support (Test Code)")
 
         self.groupBox3Text = getEmbededObjet(self, QLabel, "labelEquipIdent")
         self.groupBox4Text = getEmbededObjet(self, QLabel, "labelPortIdent")
@@ -244,11 +265,16 @@ class UserInterfaceHROG(QMainWindow):
 
         self.chaves = list(self.optionsAlarmDict.keys())
         self.valores = list(self.optionsAlarmDict.values())
-        self.atualizaAlarmeMonitor([], True)
 
-        # Atualiza a interface
+        self.atualizaAlarmeMonitor(0, True)
+
+        # Update the interface
         # self.atualizaDisplayOP()
         # self.displayErrorCodeForRemoteAG(0)
+
+        if tokenHROGready:
+            decimal_errcode = self.queryInstrument('*SRE')
+            self.atualizaAlarmeMonitor(decimal_errcode, False)
 
     def atualizaStatusBar(self, basemessage, cor):
         try:
@@ -308,7 +334,7 @@ class UserInterfaceHROG(QMainWindow):
             try:
                 idequip = self.queryInstrumentID()
                 self.stateDictOP['opid'] = idequip
-            except:
+            except Exception as ex:
                 idequip = self.stateDictOP['opid']
 
             self.labelEquipIdent.setText(self.stateDictOP['opid'])
@@ -397,92 +423,34 @@ class UserInterfaceHROG(QMainWindow):
         # print(query)
         return query, tokensuccess
 
-    def returnListOfAlarmsByCode(self, errcode):
-        global alarmeID
-        respostacheia = deque([])
-        respostavazia = []
-
-        for x in range(8):
-
-            def getindexes(x):
-                return self.chaves.index(x)
-
-            def findsubsets(s, n):
-                return list(itertools.combinations(s, n))
-
-            # Gera subsets de optionsAlarm com tamanho 4
-            subsetsresp = findsubsets(self.chaves, x)
-            # print("subsetsresp = {}".format(subsetsresp))
-
+    def setTransactCommand(self, param0, param1):
+        resp = []
+        se = []
+        for param in [param0, param1]:
             try:
-                mapaiterativo = list(map(sum, subsetsresp))
-                # print("mapaiterativo = {}".format(mapaiterativo))
-                subsetsrespsummatch = list(mapaiterativo).index(errcode)
-                # print("subsetsrespsummatch = {}".format(subsetsrespsummatch))
-            except:
-                subsetsrespsummatch = -1
+                resp.append(self.queryInstrument(param))
+                se.append(True)
+            except Exception as ex:
+                se.append(False)
+        return resp, se
 
-            if (subsetsrespsummatch > -1):
-                # print(subsetsrespsummatch)
-                alarmeID = list(subsetsresp[subsetsrespsummatch])
-                # print("alarmeID = {}".format(alarmeID))
-                respostacheia.append(alarmeID)
-                alarmePOS = list(map(getindexes, alarmeID))
-                # print("alarmePOS = {}".format(alarmePOS))
-                respostacheia.append(alarmePOS)
-                listaresp = list(np.array(self.valores)[alarmePOS])
-                # print("listaresp = {}".format(listaresp))
-                respostacheia.append(listaresp)
-                self.atualizaAlarmeMonitor(alarmeID, False)
-                return respostacheia
-        return respostavazia
 
-    def indexListOfAlarmsByCode(self, errcode):
-        # global alarmeID, listaresp, alarmePOS
-        global listaresp, alarmeID, alarmePOS
-
-        for x in range(8):
-
-            def getindexes(item):
-                return self.optionsAlarm.index(item)
-
-            def getitembychave(ch):
-                return self.chaves[ch]
-
-            # Gera subsets de optionsAlarm com tamanho 4
-            subsetsresp = findsubsets(self.optionsAlarm, x)
-            # print(subsetsresp)
-            try:
-                subsetsrespsummatch = list(map(sum, subsetsresp)).index(errcode)
-            except:
-                subsetsrespsummatch = -1
-
-            if subsetsrespsummatch > -1:
-                # print(subsetsrespsummatch)
-                alarmeID = list(subsetsresp[subsetsrespsummatch])
-                alarmePOS = list(map(getindexes, alarmeID))
-                listaresp = list(map(getitembychave, alarmePOS))
-                self.atualizaAlarmeMonitor(alarmeID, False)
-                # return
-        return [listaresp, alarmeID, alarmePOS]
-
-    def setTransactCommand(self, param, param1):
-        pass
-
-    def atualizaAlarmeMonitor(self, alarmeID, inicia):
+    def atualizaAlarmeMonitor(self, decimal_errcode, inicia):
+        alarmeIDarray = decodificador(decimal_errcode)
+        self.sevenSEGMENTSERRO.display(decimal_errcode)
         label = " "
         for chave in self.chaves:
             try:
                 label = getEmbededObjet(self.ui, QLabel, str("label_{}").format(chave))
                 timenative.sleep(0.05)
-                if chave in alarmeID:
+                if chave in alarmeIDarray:
                     label.setStyleSheet("background-color: rgb(255, 0, 0);")
                 else:
                     if inicia:
                         label.setStyleSheet("background-color: rgb(255, 255, 255);")
                     else:
                         label.setStyleSheet("background-color: rgb(128, 255, 128);")
-            except:
+            except Exception as ex:
                 pass
 
     def getUpdatedTimerSchedule(self, now):
@@ -503,6 +471,7 @@ class UserInterfaceHROG(QMainWindow):
                 self.nextScheduledDatetime = qdtlocal
                 self.atualizaDisplayAG(False)
                 return qdtlocal
+        return None
 
 
 StyleSheet = '''
