@@ -12,6 +12,7 @@ If you have just downloaded the project and it fails due to missing modules, you
 1. Install dependencies: python -m pip install -r requirements.txt.
 2. Run the script: python TimeMQTT.py
 
-                      ## Important note
-                         The App will search for the HROG equipment conected via serial interface.
-                         The code emulates a plug and play feature, by checking if the conected equipment ID contains the string "HROG"
+## Important note
+
+   The App will search for the HROG equipment conected via serial interface.
+   The code emulates a plug and play feature, by checking if the conected equipment ID contains the string "HROG"
