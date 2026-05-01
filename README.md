@@ -14,5 +14,5 @@ If you have just downloaded the project and it fails due to missing modules, you
 
 ## Important note
 
-   The App will search for the HROG equipment conected via serial interface.
-   The code emulates a plug and play feature, by checking if the conected equipment ID contains the string "HROG"
+   The TimeMQTT app will search for the HROG-10 equipment (Symmetricon) conected via serial interface.
+   The code ***emulates a plug and play feature***, by checking if the conected equipment ID contains the string "HROG"
