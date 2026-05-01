@@ -16,4 +16,4 @@ If you have just downloaded the project and it fails due to missing modules, you
 
 The **TimeMQTT** app will search for the HROG-10 equipment (Symmetricon) connected to the computer via serial interface. 
 The code emulates a plug and play feature, by checking if the ID of the connected equipment contains the string "HROG". 
-Once the "HROG" ID is found, the code identify the correspondent serial port and try to conect with the equipment.
+Once the "HROG" ID is found, the code identify the correspondent serial port and try to connect with the equipment.
