@@ -18,8 +18,33 @@ from datetime import datetime as dtime, timedelta
 import time as timenative
 
 from quantiphy import Quantity
-import serial.tools.list_ports
 import serial  # pySerial
+import serial.tools.list_ports
+
+ser = serial.Serial()
+
+def checkIfComPorts():
+    rc = "HROG not found"
+    ports = serial.tools.list_ports.comports()
+    print(f"==> All Ports: {ports}")
+    HROG_PORT = ""
+    for port in ports:
+        id = port.hwid
+        print(f"Device: {port.device}")
+        print(f"Description: {port.description}")
+        print(f"Hardware ID: {id}\n")
+        if "HROG" in str(id):
+            HROG_PORT = port.device
+            rc = f"HROG found in port {HROG_PORT}!"
+    return [HROG_PORT, rc]
+
+def initializeComport(port):
+    ser.baudrate = 9600
+    ser.port = port
+    ser.parity = serial.PARITY_NONE
+    ser.stopbits = serial.STOPBITS_ONE
+    ser.bytesize = serial.EIGHTBITS
+    ser.timeout = 0.1
 
 def getDateFromMJD(MJD):
     tmjd = Time(MJD, format='mjd')
@@ -86,9 +111,9 @@ def getSubDividedDayTime(nowqdtime, localbasetime, instep):
     return sddt
 
 
-class UserInterfaceDmtic(QMainWindow):
+class UserInterfaceHROG(QMainWindow):
     def __init__(self):
-        super(UserInterfaceDmtic, self).__init__()
+        super(UserInterfaceHROG, self).__init__()
         self.nextScheduledDatetime = None
         self.datetimeToDoTask = None
         self.qdtnow = getDateTimeFromNow()
@@ -126,6 +151,15 @@ class UserInterfaceDmtic(QMainWindow):
         self.dataprocesstoken = False
         self.thread = QThread()
         self.HROGWidget = None
+
+        resp = checkIfComPorts()
+        status_message = resp[1]
+        # print(f"Status Message = {status_message}")
+        hrog_port = resp[0]
+        if "COM" in hrog_port and len(hrog_port) > 0:
+            initializeComport(hrog_port)
+        else:
+            print("==> ERR: {}".format(status_message))
 
         loader = QUiLoader()
         guipath = os.path.abspath(os.path.join("gui", "ui", "formHROGEn.ui"))
@@ -547,7 +581,7 @@ if __name__ == '__main__':
     app_icon.addFile(os.path.join('gui', 'icons', 'inmetro.ico'), QtCore.QSize(256, 256))
     app.setWindowIcon(app_icon)
     rect = QRect(200, 200, 800, 400)
-    window = UserInterfaceDmtic()
+    window = UserInterfaceHROG()
     window.setGeometry(rect)
     window.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
     # print("lastvalue = {}".format(dir(UserInterfaceDmtic)))

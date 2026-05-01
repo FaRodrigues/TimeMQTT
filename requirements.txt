@@ -1,0 +1,8 @@
+astropy==5.2.2
+numpy==1.24.4
+pyserial==3.5
+PySide6==6.6.3.1
+PySide6==6.11.0
+PySide6_Addons==6.6.3.1
+PySide6_Essentials==6.6.3.1
+quantiphy==2.21
