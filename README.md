@@ -18,4 +18,4 @@ If you have just downloaded the project and it fails due to missing modules, you
    The code ***emulates a plug and play feature***, by checking if the ID of the conected equipment contains the string "HROG".
    Once the "HROG" ID is found, the code identify the correspondent serial port and try to conect with the equipment.
 
-   <span style="color:red">Texto Vermelho</span>
+   <font color="red">Texto vermelho</font>
